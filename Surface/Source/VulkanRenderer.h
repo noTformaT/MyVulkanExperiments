@@ -1,10 +1,12 @@
 #pragma once
 
+//#define VK_USE_PLATFORM_WIN32_KHR
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
 #include <stdexcept>
 #include <vector>
+#include <set>
 
 #include "Utilities.h"
 
@@ -31,11 +33,15 @@ private:
 	} mainDevice;
 
 	VkQueue graphicsQueue;
+	VkQueue presentationQueue;
+
+	VkSurfaceKHR surface;
 
 	// Vulkan functions
 	// -Create functions
 	void CreateInstance();
 	void CreateLogicalDevice();
+	void CreateSurface();
 
 	// -Get functions
 	void GetPhysicalDevice();
@@ -43,8 +49,10 @@ private:
 	// -Support functions
 	// --Checker Functions
 	bool CheckInstanceExtensionsSupport(std::vector<const char*>* checkExtensions);
+	bool CheckDeviceExtensionsSupport(VkPhysicalDevice device);
 	bool CheckDeviceSuitable(VkPhysicalDevice device);
 
 	// --Getter Functions
 	QueueFamilyIndices GetQueueFamilies(VkPhysicalDevice device);
+	SwapChainDetails GetSwapChainDetails(VkPhysicalDevice device);
 };
