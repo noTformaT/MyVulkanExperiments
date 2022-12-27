@@ -42,6 +42,7 @@ private:
 	void CreateInstance();
 	void CreateLogicalDevice();
 	void CreateSurface();
+	void CreateSwapChain();
 
 	// -Get functions
 	void GetPhysicalDevice();
@@ -55,4 +56,9 @@ private:
 	// --Getter Functions
 	QueueFamilyIndices GetQueueFamilies(VkPhysicalDevice device);
 	SwapChainDetails GetSwapChainDetails(VkPhysicalDevice device);
+
+	// --Choose Formats
+	VkSurfaceFormatKHR ChooseBestSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& formats);
+	VkPresentModeKHR ChooseBestPresentationMode(const std::vector<VkPresentModeKHR>& presentaionModes);
+	VkExtent2D ChooseSwapExtent(const VkSurfaceCapabilitiesKHR& surfaceCapabilities);
 };

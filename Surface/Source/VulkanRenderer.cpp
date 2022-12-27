@@ -146,6 +146,49 @@ void VulkanRenderer::CreateSurface()
 	}
 }
 
+void VulkanRenderer::CreateSwapChain()
+{
+	// Get Swap Chain details so we can pick best settings
+	SwapChainDetails swapChainDetails = GetSwapChainDetails(mainDevice.physicalDevice);
+
+	// Find optimal surface values for our swap chain
+
+	// Choose best surface format
+	VkSurfaceFormatKHR surfaceFormat = ChooseBestSurfaceFormat(swapChainDetails.formats);
+
+	// Choose best presentation format
+	VkPresentModeKHR presentMode = ChooseBestPresentationMode(swapChainDetails.presentationModes);
+
+	// Choose Swap Chain image resolution
+	VkExtent2D extent = ChooseSwapExtent(swapChainDetails.surfaceCapabilities);
+
+	// How many images are in the swap chain? Get 1 more that the minimum to allow triple buffering
+	uint32_t imageCount = swapChainDetails.surfaceCapabilities.minImageCount + 1;
+
+	// If image count higher than max, then clamp down to max
+	// If 0, then limitless
+	if (swapChainDetails.surfaceCapabilities.minImageCount > 0 &&  swapChainDetails.surfaceCapabilities.maxImageCount < imageCount)
+	{
+		imageCount = swapChainDetails.surfaceCapabilities.maxImageCount;
+	}
+
+	// Creating information for swap chain
+	VkSwapchainCreateInfoKHR swapChainCreateInfo = {};
+	swapChainCreateInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+	swapChainCreateInfo.imageFormat = surfaceFormat.format;						// Swapchain format
+	swapChainCreateInfo.imageColorSpace = surfaceFormat.colorSpace;				// Swapchain color space
+	swapChainCreateInfo.presentMode = presentMode;								// Swapchain present mode
+	swapChainCreateInfo.imageExtent = extent;									// Swapchain extent
+	swapChainCreateInfo.minImageCount = imageCount;								// Swapchain image count
+	swapChainCreateInfo.imageArrayLayers = 1;									// Number of layer for each image in chain
+	swapChainCreateInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;		// What attachment images will be used as
+	swapChainCreateInfo.preTransform = swapChainDetails.surfaceCapabilities.currentTransform; // Transform to perform on swap chain
+	swapChainCreateInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;						// How to handle blending images with external graphics (e. g. other windows)
+	swapChainCreateInfo.clipped = VK_TRUE;														// Whether to clip parts of image not in view (e.g. behind another window, off screen, etc)
+
+
+}
+
 void VulkanRenderer::GetPhysicalDevice()
 {
 	// Enumerate physical devies the vkInstance can access
@@ -338,4 +381,69 @@ SwapChainDetails VulkanRenderer::GetSwapChainDetails(VkPhysicalDevice device)
 	}
 
 	return swapChainDetails;
+}
+
+// Best format is subjective, but ours will be:
+// Format		: VK_FORMAT_R8G8B8A8_UNORM (VK_FORMAT_R8G8B8A8_UNORM as buckup)
+// ColorSpace	: VK_COLOR_SPACE_SRGB_NONLINEAR_KHR
+VkSurfaceFormatKHR VulkanRenderer::ChooseBestSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& formats)
+{
+	// If only 1 format avaible and is undefined, then this means all formats are avaible (no restrictions)
+	if (formats.size() == 1 && formats[0].format == VK_FORMAT_UNDEFINED)
+	{
+		return { VK_FORMAT_R8G8B8A8_UNORM, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR };
+	}
+
+	// If restricted, search for optimal format
+	for (const auto& format : formats)
+	{
+		if( (format.format == VK_FORMAT_R8G8B8A8_UNORM || format.format == VK_FORMAT_B8G8R8A8_UNORM) && format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
+		{
+			return format;
+		}
+	}
+
+	// If can`t find optimal format, then just return first format
+	return formats[0];
+}
+
+VkPresentModeKHR VulkanRenderer::ChooseBestPresentationMode(const std::vector<VkPresentModeKHR>& presentationModes)
+{
+	// look for Mailbox presentation mode
+	for (const auto& presentationMode : presentationModes)
+	{
+		if (presentationMode == VK_PRESENT_MODE_MAILBOX_KHR)
+		{
+			return presentationMode;
+		}
+	}
+
+	// If can`t find, use FIFO as Vulkan spec
+	return VK_PRESENT_MODE_FIFO_KHR;
+}
+
+VkExtent2D VulkanRenderer::ChooseSwapExtent(const VkSurfaceCapabilitiesKHR& surfaceCapabilities)
+{
+	// If current extent is at numeric limits, then extent can vary. Îtherwise, it is the size of the window
+	if (surfaceCapabilities.currentExtent.width != std::numeric_limits<uint32_t>::max())
+	{
+		return surfaceCapabilities.currentExtent;
+	}
+	else
+	{
+		int width;
+		int height;
+		glfwGetFramebufferSize(window, &width, &height);
+
+		// Create new extent usign window size
+		VkExtent2D newExtent = {};
+		newExtent.width = static_cast<uint32_t>(width);
+		newExtent.height = static_cast<uint32_t>(height);
+
+		// Surface also define max and min, so make sure within boundaries by clamping value
+		newExtent.width = std::max(surfaceCapabilities.minImageExtent.width, std::min(surfaceCapabilities.maxImageExtent.width, newExtent.width));
+		newExtent.height = std::max(surfaceCapabilities.minImageExtent.height, std::min(surfaceCapabilities.maxImageExtent.height, newExtent.height));
+
+		return newExtent;
+	}
 }
