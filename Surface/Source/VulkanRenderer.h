@@ -24,6 +24,7 @@ private:
 	GLFWwindow* window = nullptr;
 
 	// Vulkan components
+	// - Main
 	VkInstance instance = nullptr;
 
 	struct
@@ -34,26 +35,31 @@ private:
 
 	VkQueue graphicsQueue;
 	VkQueue presentationQueue;
-
 	VkSurfaceKHR surface;
+	VkSwapchainKHR swapChain;
+	std::vector<SwapChainImage> swapChaniImages;
+
+	// - Utility
+	VkFormat swapChainImageFormat;
+	VkExtent2D swapChainExtent;
 
 	// Vulkan functions
-	// -Create functions
+	// - Create functions
 	void CreateInstance();
 	void CreateLogicalDevice();
 	void CreateSurface();
 	void CreateSwapChain();
 
-	// -Get functions
+	// - Get functions
 	void GetPhysicalDevice();
 
-	// -Support functions
-	// --Checker Functions
+	// - Support functions
+	// -- Checker Functions
 	bool CheckInstanceExtensionsSupport(std::vector<const char*>* checkExtensions);
 	bool CheckDeviceExtensionsSupport(VkPhysicalDevice device);
 	bool CheckDeviceSuitable(VkPhysicalDevice device);
 
-	// --Getter Functions
+	// -- Getter Functions
 	QueueFamilyIndices GetQueueFamilies(VkPhysicalDevice device);
 	SwapChainDetails GetSwapChainDetails(VkPhysicalDevice device);
 
