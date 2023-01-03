@@ -30,3 +30,9 @@ struct SwapChainDetails
 		return !formats.empty() && !presentationModes.empty();
 	}
 };
+
+struct SwapChainImage
+{
+	VkImage image;
+	VkImageView imageView;
+};

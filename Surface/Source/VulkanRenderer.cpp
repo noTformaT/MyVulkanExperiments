@@ -14,6 +14,7 @@ int VulkanRenderer::Init(GLFWwindow* newWindow)
 		CreateSurface();
 		GetPhysicalDevice();
 		CreateLogicalDevice();
+		CreateSwapChain();
 	}
 	catch (const std::runtime_error& e)
 	{
@@ -25,6 +26,7 @@ int VulkanRenderer::Init(GLFWwindow* newWindow)
 
 void VulkanRenderer::Cleanup()
 {
+	vkDestroySwapchainKHR(mainDevice.logicalDevice, swapChain, nullptr);
 	vkDestroySurfaceKHR(instance, surface, nullptr);
 	vkDestroyDevice(mainDevice.logicalDevice, nullptr);
 	vkDestroyInstance(instance, nullptr);
@@ -167,14 +169,15 @@ void VulkanRenderer::CreateSwapChain()
 
 	// If image count higher than max, then clamp down to max
 	// If 0, then limitless
-	if (swapChainDetails.surfaceCapabilities.minImageCount > 0 &&  swapChainDetails.surfaceCapabilities.maxImageCount < imageCount)
+	if (swapChainDetails.surfaceCapabilities.minImageCount > 0 && swapChainDetails.surfaceCapabilities.maxImageCount < imageCount)
 	{
 		imageCount = swapChainDetails.surfaceCapabilities.maxImageCount;
 	}
 
 	// Creating information for swap chain
 	VkSwapchainCreateInfoKHR swapChainCreateInfo = {};
-	swapChainCreateInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+	swapChainCreateInfo.surface = surface;										// Swapchain surface
+	swapChainCreateInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;	// Swapchain structure
 	swapChainCreateInfo.imageFormat = surfaceFormat.format;						// Swapchain format
 	swapChainCreateInfo.imageColorSpace = surfaceFormat.colorSpace;				// Swapchain color space
 	swapChainCreateInfo.presentMode = presentMode;								// Swapchain present mode
@@ -186,6 +189,43 @@ void VulkanRenderer::CreateSwapChain()
 	swapChainCreateInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;						// How to handle blending images with external graphics (e. g. other windows)
 	swapChainCreateInfo.clipped = VK_TRUE;														// Whether to clip parts of image not in view (e.g. behind another window, off screen, etc)
 
+	// Get Queue Family indices
+	QueueFamilyIndices indices = GetQueueFamilies(mainDevice.physicalDevice);
+
+	// If graphics and Presentation families are different, then swapchain must let images be shared between families
+	if (indices.graphicsFamily != indices.presentationFamily)
+	{
+		uint32_t queueFamilyIndices[] = {
+			(uint32_t)indices.graphicsFamily,
+			(uint32_t)indices.presentationFamily
+		};
+
+		swapChainCreateInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT;	// Image share handling 
+		swapChainCreateInfo.queueFamilyIndexCount = 2;						// Number of queues to share images between
+		swapChainCreateInfo.pQueueFamilyIndices = queueFamilyIndices;		// Array of queues to share between
+	}
+	else
+	{
+		swapChainCreateInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
+		swapChainCreateInfo.queueFamilyIndexCount = 0;
+		swapChainCreateInfo.pQueueFamilyIndices = nullptr;
+	}
+	// If old swapchain been destroyed and this one replaces it, then link old one to quikly hand over responsibilities
+	swapChainCreateInfo.oldSwapchain = VK_NULL_HANDLE;
+
+	// Create Swapchain
+
+	VkResult result = vkCreateSwapchainKHR(mainDevice.logicalDevice, &swapChainCreateInfo, nullptr, &swapChain);
+	if (result != VK_SUCCESS)
+	{
+		throw std::runtime_error("Failed to create Swapchain!");
+	}
+	
+	// Store for later reference
+	swapChainImageFormat = surfaceFormat.format;
+	swapChainExtent = extent;
+
+	uint32_t swapchainImageFile;
 
 }
 
