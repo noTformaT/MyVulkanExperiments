@@ -11,6 +11,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Surface", "Surface\Surface.
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ShaderModules", "ShaderModules\ShaderModules.vcxproj", "{17F220B7-24CC-4DAB-8BA7-EBE8D28EACBC}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "FixedRenderPass", "FixedRenderPass\FixedRenderPass.vcxproj", "{4B6BCA32-FCDD-4609-8908-7294A7809477}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -51,6 +53,14 @@ Global
 		{17F220B7-24CC-4DAB-8BA7-EBE8D28EACBC}.Release|x64.Build.0 = Release|x64
 		{17F220B7-24CC-4DAB-8BA7-EBE8D28EACBC}.Release|x86.ActiveCfg = Release|Win32
 		{17F220B7-24CC-4DAB-8BA7-EBE8D28EACBC}.Release|x86.Build.0 = Release|Win32
+		{4B6BCA32-FCDD-4609-8908-7294A7809477}.Debug|x64.ActiveCfg = Debug|x64
+		{4B6BCA32-FCDD-4609-8908-7294A7809477}.Debug|x64.Build.0 = Debug|x64
+		{4B6BCA32-FCDD-4609-8908-7294A7809477}.Debug|x86.ActiveCfg = Debug|Win32
+		{4B6BCA32-FCDD-4609-8908-7294A7809477}.Debug|x86.Build.0 = Debug|Win32
+		{4B6BCA32-FCDD-4609-8908-7294A7809477}.Release|x64.ActiveCfg = Release|x64
+		{4B6BCA32-FCDD-4609-8908-7294A7809477}.Release|x64.Build.0 = Release|x64
+		{4B6BCA32-FCDD-4609-8908-7294A7809477}.Release|x86.ActiveCfg = Release|Win32
+		{4B6BCA32-FCDD-4609-8908-7294A7809477}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
