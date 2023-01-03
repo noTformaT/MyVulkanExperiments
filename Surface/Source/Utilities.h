@@ -31,6 +31,7 @@ struct SwapChainDetails
 	}
 };
 
+// SwapChain image struct
 struct SwapChainImage
 {
 	VkImage image;
