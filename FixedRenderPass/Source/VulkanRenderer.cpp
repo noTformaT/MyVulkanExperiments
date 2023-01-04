@@ -27,6 +27,7 @@ int VulkanRenderer::Init(GLFWwindow* newWindow)
 
 void VulkanRenderer::Cleanup()
 {
+	vkDestroyPipelineLayout(mainDevice.logicalDevice, pipelineLayout, nullptr);
 	for (SwapChainImage& image : swapChainImages)
 	{
 		vkDestroyImageView(mainDevice.logicalDevice, image.imageView, nullptr);
@@ -43,6 +44,12 @@ VulkanRenderer::~VulkanRenderer()
 
 void VulkanRenderer::CreateInstance()
 {
+	printf("----------------------------------\n");
+	printf("My Vulkan Render...\nAuthor: Eugene Karpenko\n");
+	printf("----------------------------------\n");
+
+	printf("STAGE: Create Vulkan Instance \n\n");
+
 	// Information about application itself
 	// Most data there doesn't affect programm and is for developer convience
 	VkApplicationInfo appInfo = {};
@@ -67,11 +74,14 @@ void VulkanRenderer::CreateInstance()
 
 	// Get GLFW extensions
 	glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
+	printf("Vulkan extensions count: %u\n", glfwExtensionCount);
 
 	// Add GLFW extensions to list of extensions
+	printf("Vulkan extensions list:\n");
 	for (size_t i = 0; i < glfwExtensionCount; i++)
 	{
 		instanceExtensions.push_back(glfwExtensions[i]);
+		printf("\t%s\n", glfwExtensions[i]);
 	}
 
 	// Check instance Extensions suported...
@@ -93,10 +103,14 @@ void VulkanRenderer::CreateInstance()
 	{
 		throw std::runtime_error("Failed to create ");
 	}
+	printf("Vulkan Instance create successful\n");
+	printf("----------------------------------\n");
 }
 
 void VulkanRenderer::CreateLogicalDevice()
 {
+	printf("STAGE: Create Vulkan Logical Device \n\n");
+
 	// Get queue family indices fro the chosen Physical Device
 	QueueFamilyIndices indices = GetQueueFamilies(mainDevice.physicalDevice);
 
@@ -141,6 +155,8 @@ void VulkanRenderer::CreateLogicalDevice()
 	// From given logical device, of given Queue Index (0 since only one queue), place reference in given vkQueue
 	vkGetDeviceQueue(mainDevice.logicalDevice, indices.graphicsFamily, 0, &graphicsQueue);
 	vkGetDeviceQueue(mainDevice.logicalDevice, indices.presentationFamily, 0, &presentationQueue);
+	printf("Logical Device successful connect to Physical Device\n");
+	printf("----------------------------------\n");
 }
 
 void VulkanRenderer::CreateSurface()
@@ -153,8 +169,289 @@ void VulkanRenderer::CreateSurface()
 	}
 }
 
+inline std::string presentModeKHRString(const VkPresentModeKHR presentMode)
+{
+	switch (presentMode)
+	{
+#define STR(r) case VK_PRESENT_MODE_##r##_KHR: return #r
+		STR(IMMEDIATE);
+		STR(MAILBOX);
+		STR(FIFO);
+		STR(FIFO_RELAXED);
+		STR(SHARED_DEMAND_REFRESH);
+		STR(SHARED_CONTINUOUS_REFRESH);
+#undef STR
+	default: return "UNKNOWN_ENUM";
+	}
+}
+
+inline std::string formatString(const VkFormat format)
+{
+	switch (format)
+	{
+#define STR(r) case VK_FORMAT_##r: return #r
+		STR(UNDEFINED);
+		STR(R4G4_UNORM_PACK8);
+		STR(R4G4B4A4_UNORM_PACK16);
+		STR(B4G4R4A4_UNORM_PACK16);
+		STR(R5G6B5_UNORM_PACK16);
+		STR(B5G6R5_UNORM_PACK16);
+		STR(R5G5B5A1_UNORM_PACK16);
+		STR(B5G5R5A1_UNORM_PACK16);
+		STR(A1R5G5B5_UNORM_PACK16);
+		STR(R8_UNORM);
+		STR(R8_SNORM);
+		STR(R8_USCALED);
+		STR(R8_SSCALED);
+		STR(R8_UINT);
+		STR(R8_SINT);
+		STR(R8_SRGB);
+		STR(R8G8_UNORM);
+		STR(R8G8_SNORM);
+		STR(R8G8_USCALED);
+		STR(R8G8_SSCALED);
+		STR(R8G8_UINT);
+		STR(R8G8_SINT);
+		STR(R8G8_SRGB);
+		STR(R8G8B8_UNORM);
+		STR(R8G8B8_SNORM);
+		STR(R8G8B8_USCALED);
+		STR(R8G8B8_SSCALED);
+		STR(R8G8B8_UINT);
+		STR(R8G8B8_SINT);
+		STR(R8G8B8_SRGB);
+		STR(B8G8R8_UNORM);
+		STR(B8G8R8_SNORM);
+		STR(B8G8R8_USCALED);
+		STR(B8G8R8_SSCALED);
+		STR(B8G8R8_UINT);
+		STR(B8G8R8_SINT);
+		STR(B8G8R8_SRGB);
+		STR(R8G8B8A8_UNORM);
+		STR(R8G8B8A8_SNORM);
+		STR(R8G8B8A8_USCALED);
+		STR(R8G8B8A8_SSCALED);
+		STR(R8G8B8A8_UINT);
+		STR(R8G8B8A8_SINT);
+		STR(R8G8B8A8_SRGB);
+		STR(B8G8R8A8_UNORM);
+		STR(B8G8R8A8_SNORM);
+		STR(B8G8R8A8_USCALED);
+		STR(B8G8R8A8_SSCALED);
+		STR(B8G8R8A8_UINT);
+		STR(B8G8R8A8_SINT);
+		STR(B8G8R8A8_SRGB);
+		STR(A8B8G8R8_UNORM_PACK32);
+		STR(A8B8G8R8_SNORM_PACK32);
+		STR(A8B8G8R8_USCALED_PACK32);
+		STR(A8B8G8R8_SSCALED_PACK32);
+		STR(A8B8G8R8_UINT_PACK32);
+		STR(A8B8G8R8_SINT_PACK32);
+		STR(A8B8G8R8_SRGB_PACK32);
+		STR(A2R10G10B10_UNORM_PACK32);
+		STR(A2R10G10B10_SNORM_PACK32);
+		STR(A2R10G10B10_USCALED_PACK32);
+		STR(A2R10G10B10_SSCALED_PACK32);
+		STR(A2R10G10B10_UINT_PACK32);
+		STR(A2R10G10B10_SINT_PACK32);
+		STR(A2B10G10R10_UNORM_PACK32);
+		STR(A2B10G10R10_SNORM_PACK32);
+		STR(A2B10G10R10_USCALED_PACK32);
+		STR(A2B10G10R10_SSCALED_PACK32);
+		STR(A2B10G10R10_UINT_PACK32);
+		STR(A2B10G10R10_SINT_PACK32);
+		STR(R16_UNORM);
+		STR(R16_SNORM);
+		STR(R16_USCALED);
+		STR(R16_SSCALED);
+		STR(R16_UINT);
+		STR(R16_SINT);
+		STR(R16_SFLOAT);
+		STR(R16G16_UNORM);
+		STR(R16G16_SNORM);
+		STR(R16G16_USCALED);
+		STR(R16G16_SSCALED);
+		STR(R16G16_UINT);
+		STR(R16G16_SINT);
+		STR(R16G16_SFLOAT);
+		STR(R16G16B16_UNORM);
+		STR(R16G16B16_SNORM);
+		STR(R16G16B16_USCALED);
+		STR(R16G16B16_SSCALED);
+		STR(R16G16B16_UINT);
+		STR(R16G16B16_SINT);
+		STR(R16G16B16_SFLOAT);
+		STR(R16G16B16A16_UNORM);
+		STR(R16G16B16A16_SNORM);
+		STR(R16G16B16A16_USCALED);
+		STR(R16G16B16A16_SSCALED);
+		STR(R16G16B16A16_UINT);
+		STR(R16G16B16A16_SINT);
+		STR(R16G16B16A16_SFLOAT);
+		STR(R32_UINT);
+		STR(R32_SINT);
+		STR(R32_SFLOAT);
+		STR(R32G32_UINT);
+		STR(R32G32_SINT);
+		STR(R32G32_SFLOAT);
+		STR(R32G32B32_UINT);
+		STR(R32G32B32_SINT);
+		STR(R32G32B32_SFLOAT);
+		STR(R32G32B32A32_UINT);
+		STR(R32G32B32A32_SINT);
+		STR(R32G32B32A32_SFLOAT);
+		STR(R64_UINT);
+		STR(R64_SINT);
+		STR(R64_SFLOAT);
+		STR(R64G64_UINT);
+		STR(R64G64_SINT);
+		STR(R64G64_SFLOAT);
+		STR(R64G64B64_UINT);
+		STR(R64G64B64_SINT);
+		STR(R64G64B64_SFLOAT);
+		STR(R64G64B64A64_UINT);
+		STR(R64G64B64A64_SINT);
+		STR(R64G64B64A64_SFLOAT);
+		STR(B10G11R11_UFLOAT_PACK32);
+		STR(E5B9G9R9_UFLOAT_PACK32);
+		STR(D16_UNORM);
+		STR(X8_D24_UNORM_PACK32);
+		STR(D32_SFLOAT);
+		STR(S8_UINT);
+		STR(D16_UNORM_S8_UINT);
+		STR(D24_UNORM_S8_UINT);
+		STR(D32_SFLOAT_S8_UINT);
+		STR(BC1_RGB_UNORM_BLOCK);
+		STR(BC1_RGB_SRGB_BLOCK);
+		STR(BC1_RGBA_UNORM_BLOCK);
+		STR(BC1_RGBA_SRGB_BLOCK);
+		STR(BC2_UNORM_BLOCK);
+		STR(BC2_SRGB_BLOCK);
+		STR(BC3_UNORM_BLOCK);
+		STR(BC3_SRGB_BLOCK);
+		STR(BC4_UNORM_BLOCK);
+		STR(BC4_SNORM_BLOCK);
+		STR(BC5_UNORM_BLOCK);
+		STR(BC5_SNORM_BLOCK);
+		STR(BC6H_UFLOAT_BLOCK);
+		STR(BC6H_SFLOAT_BLOCK);
+		STR(BC7_UNORM_BLOCK);
+		STR(BC7_SRGB_BLOCK);
+		STR(ETC2_R8G8B8_UNORM_BLOCK);
+		STR(ETC2_R8G8B8_SRGB_BLOCK);
+		STR(ETC2_R8G8B8A1_UNORM_BLOCK);
+		STR(ETC2_R8G8B8A1_SRGB_BLOCK);
+		STR(ETC2_R8G8B8A8_UNORM_BLOCK);
+		STR(ETC2_R8G8B8A8_SRGB_BLOCK);
+		STR(EAC_R11_UNORM_BLOCK);
+		STR(EAC_R11_SNORM_BLOCK);
+		STR(EAC_R11G11_UNORM_BLOCK);
+		STR(EAC_R11G11_SNORM_BLOCK);
+		STR(ASTC_4x4_UNORM_BLOCK);
+		STR(ASTC_4x4_SRGB_BLOCK);
+		STR(ASTC_5x4_UNORM_BLOCK);
+		STR(ASTC_5x4_SRGB_BLOCK);
+		STR(ASTC_5x5_UNORM_BLOCK);
+		STR(ASTC_5x5_SRGB_BLOCK);
+		STR(ASTC_6x5_UNORM_BLOCK);
+		STR(ASTC_6x5_SRGB_BLOCK);
+		STR(ASTC_6x6_UNORM_BLOCK);
+		STR(ASTC_6x6_SRGB_BLOCK);
+		STR(ASTC_8x5_UNORM_BLOCK);
+		STR(ASTC_8x5_SRGB_BLOCK);
+		STR(ASTC_8x6_UNORM_BLOCK);
+		STR(ASTC_8x6_SRGB_BLOCK);
+		STR(ASTC_8x8_UNORM_BLOCK);
+		STR(ASTC_8x8_SRGB_BLOCK);
+		STR(ASTC_10x5_UNORM_BLOCK);
+		STR(ASTC_10x5_SRGB_BLOCK);
+		STR(ASTC_10x6_UNORM_BLOCK);
+		STR(ASTC_10x6_SRGB_BLOCK);
+		STR(ASTC_10x8_UNORM_BLOCK);
+		STR(ASTC_10x8_SRGB_BLOCK);
+		STR(ASTC_10x10_UNORM_BLOCK);
+		STR(ASTC_10x10_SRGB_BLOCK);
+		STR(ASTC_12x10_UNORM_BLOCK);
+		STR(ASTC_12x10_SRGB_BLOCK);
+		STR(ASTC_12x12_UNORM_BLOCK);
+		STR(ASTC_12x12_SRGB_BLOCK);
+		STR(G8B8G8R8_422_UNORM);
+		STR(B8G8R8G8_422_UNORM);
+		STR(G8_B8_R8_3PLANE_420_UNORM);
+		STR(G8_B8R8_2PLANE_420_UNORM);
+		STR(G8_B8_R8_3PLANE_422_UNORM);
+		STR(G8_B8R8_2PLANE_422_UNORM);
+		STR(G8_B8_R8_3PLANE_444_UNORM);
+		STR(R10X6_UNORM_PACK16);
+		STR(R10X6G10X6_UNORM_2PACK16);
+		STR(R10X6G10X6B10X6A10X6_UNORM_4PACK16);
+		STR(G10X6B10X6G10X6R10X6_422_UNORM_4PACK16);
+		STR(B10X6G10X6R10X6G10X6_422_UNORM_4PACK16);
+		STR(G10X6_B10X6_R10X6_3PLANE_420_UNORM_3PACK16);
+		STR(G10X6_B10X6R10X6_2PLANE_420_UNORM_3PACK16);
+		STR(G10X6_B10X6_R10X6_3PLANE_422_UNORM_3PACK16);
+		STR(G10X6_B10X6R10X6_2PLANE_422_UNORM_3PACK16);
+		STR(G10X6_B10X6_R10X6_3PLANE_444_UNORM_3PACK16);
+		STR(R12X4_UNORM_PACK16);
+		STR(R12X4G12X4_UNORM_2PACK16);
+		STR(R12X4G12X4B12X4A12X4_UNORM_4PACK16);
+		STR(G12X4B12X4G12X4R12X4_422_UNORM_4PACK16);
+		STR(B12X4G12X4R12X4G12X4_422_UNORM_4PACK16);
+		STR(G12X4_B12X4_R12X4_3PLANE_420_UNORM_3PACK16);
+		STR(G12X4_B12X4R12X4_2PLANE_420_UNORM_3PACK16);
+		STR(G12X4_B12X4_R12X4_3PLANE_422_UNORM_3PACK16);
+		STR(G12X4_B12X4R12X4_2PLANE_422_UNORM_3PACK16);
+		STR(G12X4_B12X4_R12X4_3PLANE_444_UNORM_3PACK16);
+		STR(G16B16G16R16_422_UNORM);
+		STR(B16G16R16G16_422_UNORM);
+		STR(G16_B16_R16_3PLANE_420_UNORM);
+		STR(G16_B16R16_2PLANE_420_UNORM);
+		STR(G16_B16_R16_3PLANE_422_UNORM);
+		STR(G16_B16R16_2PLANE_422_UNORM);
+		STR(G16_B16_R16_3PLANE_444_UNORM);
+		STR(PVRTC1_2BPP_UNORM_BLOCK_IMG);
+		STR(PVRTC1_4BPP_UNORM_BLOCK_IMG);
+		STR(PVRTC2_2BPP_UNORM_BLOCK_IMG);
+		STR(PVRTC2_4BPP_UNORM_BLOCK_IMG);
+		STR(PVRTC1_2BPP_SRGB_BLOCK_IMG);
+		STR(PVRTC1_4BPP_SRGB_BLOCK_IMG);
+		STR(PVRTC2_2BPP_SRGB_BLOCK_IMG);
+		STR(PVRTC2_4BPP_SRGB_BLOCK_IMG);
+#undef STR
+	default: return "UNKNOWN_ENUM";
+	}
+}
+
+inline std::string colorSpaceKHRString(const VkColorSpaceKHR colorSpace)
+{
+	switch (colorSpace)
+	{
+#define STR(r) case VK_COLOR_SPACE_##r: return #r
+		STR(SRGB_NONLINEAR_KHR);
+		STR(DISPLAY_P3_NONLINEAR_EXT);
+		STR(EXTENDED_SRGB_LINEAR_EXT);
+		STR(DISPLAY_P3_LINEAR_EXT);
+		STR(DCI_P3_NONLINEAR_EXT);
+		STR(BT709_LINEAR_EXT);
+		STR(BT709_NONLINEAR_EXT);
+		STR(BT2020_LINEAR_EXT);
+		STR(HDR10_ST2084_EXT);
+		STR(DOLBYVISION_EXT);
+		STR(HDR10_HLG_EXT);
+		STR(ADOBERGB_LINEAR_EXT);
+		STR(ADOBERGB_NONLINEAR_EXT);
+		STR(PASS_THROUGH_EXT);
+		STR(EXTENDED_SRGB_NONLINEAR_EXT);
+		STR(DISPLAY_NATIVE_AMD);
+#undef STR
+	default: return "UNKNOWN_ENUM";
+	}
+}
+
+
 void VulkanRenderer::CreateSwapChain()
 {
+	printf("STAGE: Create Swap Chain\n\n");
 	// Get Swap Chain details so we can pick best settings
 	SwapChainDetails swapChainDetails = GetSwapChainDetails(mainDevice.physicalDevice);
 
@@ -162,12 +459,17 @@ void VulkanRenderer::CreateSwapChain()
 
 	// Choose best surface format
 	VkSurfaceFormatKHR surfaceFormat = ChooseBestSurfaceFormat(swapChainDetails.formats);
+	printf("Surface format: %s\n", formatString(surfaceFormat.format).c_str());
+	printf("Surface color space: %s\n", colorSpaceKHRString(surfaceFormat.colorSpace).c_str());
 
 	// Choose best presentation format
 	VkPresentModeKHR presentMode = ChooseBestPresentationMode(swapChainDetails.presentationModes);
+	printf("Surface presentaion mode: %s\n", presentModeKHRString(presentMode).c_str());
 
 	// Choose Swap Chain image resolution
 	VkExtent2D extent = ChooseSwapExtent(swapChainDetails.surfaceCapabilities);
+	printf("Surface width: %i\n", extent.width);
+	printf("Surface height: %i\n", extent.height);
 
 	// How many images are in the swap chain? Get 1 more that the minimum to allow triple buffering
 	uint32_t imageCount = swapChainDetails.surfaceCapabilities.minImageCount + 1;
@@ -178,6 +480,8 @@ void VulkanRenderer::CreateSwapChain()
 	{
 		imageCount = swapChainDetails.surfaceCapabilities.maxImageCount;
 	}
+
+	printf("Surface count: %i\n", imageCount);
 
 	// Creating information for swap chain
 	VkSwapchainCreateInfoKHR swapChainCreateInfo = {};
@@ -247,6 +551,8 @@ void VulkanRenderer::CreateSwapChain()
 
 		swapChainImages.push_back(swapChainImage);
 	}
+	printf("Swap Chain with %i Surface successful created\n", imageCount);
+	printf("----------------------------------\n");
 }
 
 void VulkanRenderer::CreateGraphicsPipeline()
@@ -332,16 +638,82 @@ void VulkanRenderer::CreateGraphicsPipeline()
 	dynamicStateEnables.push_back(VK_DYNAMIC_STATE_SCISSOR);		// Dynamic scissor  : Can resize in command buffer with vkCmdSetScissor(commandbuffer, 0, 1, &scissor);
 
 	// Dynamic State creation info
-	printf("Create Pipeline Dynamic States\n");
+	printf("Create Dynamic States\n");
 	VkPipelineDynamicStateCreateInfo dynamicStateCreateInfo = {};
 	dynamicStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
 	dynamicStateCreateInfo.dynamicStateCount = static_cast<uint32_t>(dynamicStateEnables.size());
 	dynamicStateCreateInfo.pDynamicStates = dynamicStateEnables.data();
 
 	// -- RASTERIZER --
+	printf("Create Rasterization State\n");
 	VkPipelineRasterizationStateCreateInfo rasterizationStateCreateInfo = {};
 	rasterizationStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-	rasterizationStateCreateInfo.depthClampEnable = VK_FALSE;
+	rasterizationStateCreateInfo.depthClampEnable = VK_FALSE;			// Change if fragment beyond near/far planes are clipped (default) or clamped to plane
+	rasterizationStateCreateInfo.rasterizerDiscardEnable = VK_FALSE;	// Whether to discard data and skip resterizer. Never creates fragment, only suitable for pipeline without framebuffer output
+	rasterizationStateCreateInfo.polygonMode = VK_POLYGON_MODE_FILL;	// How to handle filling points between vertices
+	rasterizationStateCreateInfo.lineWidth = 1.0f;						// How thick line should be when drawn
+	rasterizationStateCreateInfo.cullMode = VK_CULL_MODE_BACK_BIT;		// Which face of a tri to cull
+	rasterizationStateCreateInfo.frontFace = VK_FRONT_FACE_CLOCKWISE;	// Winding to determine which side is front
+	rasterizationStateCreateInfo.depthBiasEnable = VK_FALSE;			// Whether to add depth bias to fragments (good for stopping "shadow acne" in shadow mapping)
+
+	// -- MULTISAMPLING --
+	printf("Create Multisampling State\n");
+	VkPipelineMultisampleStateCreateInfo multisampleStateCreateInfo = {};
+	multisampleStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+	multisampleStateCreateInfo.sampleShadingEnable = VK_FALSE;					// Enable multisample shading or not
+	multisampleStateCreateInfo.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;	// Number of samples to use per fragment
+
+	// -- BLENDING --
+	// Blending decides how to blend a new color being a fragment, with the old value
+	
+	// Blend Attachment State (how blending is handled)
+	VkPipelineColorBlendAttachmentState colorBlendAttachmentState = {};
+	colorBlendAttachmentState.colorWriteMask = VK_COLOR_COMPONENT_R_BIT		// Colors to apply blending to 
+		| VK_COLOR_COMPONENT_G_BIT 
+		| VK_COLOR_COMPONENT_B_BIT 
+		| VK_COLOR_COMPONENT_A_BIT;
+	colorBlendAttachmentState.blendEnable = VK_TRUE;						// Enable blending
+
+	// Blending uses equation: (srcColorBlendFactor * new color) colorBlendOp(destinationBlendFactor * old Color)
+	// Summarised:	(VK_BLEND_FACTOR_SRC_ALPHA * new color) + (VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA * old color)
+	//				(new color alpha * new color) + ((1 - new color alpha) * old color)
+	colorBlendAttachmentState.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+	colorBlendAttachmentState.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+	colorBlendAttachmentState.colorBlendOp = VK_BLEND_OP_ADD;
+	
+	// Summarised: (1 * new alpha) + (0 * old alpha)
+	colorBlendAttachmentState.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+	colorBlendAttachmentState.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+	colorBlendAttachmentState.alphaBlendOp = VK_BLEND_OP_ADD;
+
+	printf("Create Blending State\n");
+	VkPipelineColorBlendStateCreateInfo colorBlendStateCreateInfo = {};
+	colorBlendStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+	colorBlendStateCreateInfo.logicOpEnable = VK_FALSE;							// Alternative to calculation is to use logical operation
+	colorBlendStateCreateInfo.attachmentCount = 1;
+	colorBlendStateCreateInfo.pAttachments = &colorBlendAttachmentState;
+
+
+	// -- PIPELINE LAYOUT -- (TODO: Apply Future Descriptors Layouts)
+	printf("Create Pipeline Layout\n");
+	VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo = {};
+	pipelineLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+	pipelineLayoutCreateInfo.setLayoutCount = 0;
+	pipelineLayoutCreateInfo.pSetLayouts = nullptr;
+	pipelineLayoutCreateInfo.pushConstantRangeCount = 0;
+	pipelineLayoutCreateInfo.pPushConstantRanges = nullptr;
+
+	// Create Pipeline Layout
+	VkResult result = vkCreatePipelineLayout(mainDevice.logicalDevice, &pipelineLayoutCreateInfo, nullptr, &pipelineLayout);
+	if (result != VK_SUCCESS)
+	{
+		throw std::runtime_error("Failed to create Pipeline Layout!");
+	}
+
+
+	// -- DEPTH STENCIL TESTING --
+	//	TODO: Set up depth stencil testing
+	printf("Create Depth Stencil Testing\n");
 
 	// Destroy shader modules, no longer needed after Pipeline created
 	printf("Destroy Vertex shader module\n");
@@ -354,9 +726,13 @@ void VulkanRenderer::CreateGraphicsPipeline()
 
 void VulkanRenderer::GetPhysicalDevice()
 {
+	printf("STAGE: Create Physical Device\n\n");
+
 	// Enumerate physical devies the vkInstance can access
 	uint32_t deviceCount = 0;
 	vkEnumeratePhysicalDevices(instance, &deviceCount, nullptr);
+
+	printf("GPU Count: %x\n", deviceCount);
 
 	// Throw if no device avaible, then none support Vulkan!
 	if (deviceCount == 0)
@@ -368,6 +744,7 @@ void VulkanRenderer::GetPhysicalDevice()
 	std::vector<VkPhysicalDevice> deviceList(deviceCount);
 	vkEnumeratePhysicalDevices(instance, &deviceCount, deviceList.data());
 
+	printf("GPU List:\n");
 	for (const auto& device : deviceList)
 	{
 		if (CheckDeviceSuitable(device))
@@ -376,6 +753,13 @@ void VulkanRenderer::GetPhysicalDevice()
 			break;
 		}
 	}
+
+	// Information about the device itself (ID, name, type, vendor, etc)
+	VkPhysicalDeviceProperties deviceProperties;
+	vkGetPhysicalDeviceProperties(mainDevice.physicalDevice, &deviceProperties);
+	printf("Device selected: %s\n", deviceProperties.deviceName);
+	printf("Physical Device created successful\n");
+	printf("----------------------------------\n");
 }
 
 bool VulkanRenderer::CheckInstanceExtensionsSupport(std::vector<const char*>* checkExtensions)
@@ -452,6 +836,8 @@ bool VulkanRenderer::CheckDeviceSuitable(VkPhysicalDevice device)
 	// Information about the device itself (ID, name, type, vendor, etc)
 	VkPhysicalDeviceProperties deviceProperties;
 	vkGetPhysicalDeviceProperties(device, &deviceProperties);
+
+	printf("\t%s\n", deviceProperties.deviceName);
 
 	// Information about what the device can do(geo shader, tess shader, wide lines, etc)
 	VkPhysicalDeviceFeatures deviceFeatures;
