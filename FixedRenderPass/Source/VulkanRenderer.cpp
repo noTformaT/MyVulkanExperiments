@@ -15,6 +15,7 @@ int VulkanRenderer::Init(GLFWwindow* newWindow)
 		GetPhysicalDevice();
 		CreateLogicalDevice();
 		CreateSwapChain();
+		CreateRenderPass();
 		CreateGraphicsPipeline();
 	}
 	catch (const std::runtime_error& e)
@@ -553,6 +554,53 @@ void VulkanRenderer::CreateSwapChain()
 	}
 	printf("Swap Chain with %i Surface successful created\n", imageCount);
 	printf("----------------------------------\n");
+}
+
+void VulkanRenderer::CreateRenderPass()
+{
+	// Colour attachments of render pass
+	VkAttachmentDescription colourAttachment = {};
+	colourAttachment.format = swapChainImageFormat;						// Format to use for attachment
+	colourAttachment.samples = VK_SAMPLE_COUNT_1_BIT;					// Number of samples to write for multisampling
+	colourAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;				// Describe what to do with attachment before rendering
+	colourAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;			// Describe what to do with attachment affter rendering
+	colourAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;	// Describes what to do with stencil before rendering
+	colourAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;	// Describes what to do with stencil after rendering
+
+	// Framebuffer data will be store as an image, but image can given difference data layouts
+	// to give optimal use for certain operations
+	colourAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;			// Image data layout before render pass starts
+	colourAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;		// Image data layout affter render pass (to change to)
+
+
+	// Attachment reference uses an attachment index that refers to index in the attachment list passed to renderPassCreateInfo
+	VkAttachmentReference colourAttachmentReference = {};
+	colourAttachmentReference.attachment = 0;
+	colourAttachmentReference.layout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL;
+		
+	// Information about a particular subpass the Render Pass is using
+	VkSubpassDescription subpass = {};
+	subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;		// Pipeline type subpass is to be bound to
+	subpass.pColorAttachments = &colourAttachmentReference;
+
+	// Need to determine when layout transitions occur using subpass dependenciess
+	std::array<VkSubpassDependency, 2> subpassDependencies;
+
+	// Conversion from VK_IMAGE_LAYOUT_UNDEFINED to VK_LAYOUT_PRESENT_SRC_KHR
+	subpassDependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;
+	subpassDependencies[0].srcStageMask = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+	subpassDependencies[0].srcAccessMask = VK_ACCESS_MEMORY_READ_BIT;
+	
+	subpassDependencies[0].dstSubpass = 0;
+	subpassDependencies[0].dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+	subpassDependencies[0].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
+	VkRenderPassCreateInfo renderPassCreateInfo = {};
+	renderPassCreateInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+	renderPassCreateInfo.attachmentCount = 1;
+	renderPassCreateInfo.pAttachments = &colourAttachment;
+	renderPassCreateInfo.subpassCount = 1;
+	renderPassCreateInfo.pSubpasses = &subpass;
 }
 
 void VulkanRenderer::CreateGraphicsPipeline()

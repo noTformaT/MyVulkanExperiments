@@ -7,6 +7,7 @@
 #include <stdexcept>
 #include <vector>
 #include <set>
+#include <array>
 
 #include "Utilities.h"
 
@@ -52,6 +53,7 @@ private:
 	void CreateLogicalDevice();
 	void CreateSurface();
 	void CreateSwapChain();
+	void CreateRenderPass();
 	void CreateGraphicsPipeline();
 
 	// - Get functions
