@@ -11,6 +11,7 @@ int VulkanRenderer::Init(GLFWwindow* newWindow)
 	try
 	{
 		CreateInstance();
+		CreateDebugCallback();
 		CreateSurface();
 		GetPhysicalDevice();
 		CreateLogicalDevice();
@@ -38,6 +39,10 @@ void VulkanRenderer::Cleanup()
 	vkDestroySwapchainKHR(mainDevice.logicalDevice, swapChain, nullptr);
 	vkDestroySurfaceKHR(instance, surface, nullptr);
 	vkDestroyDevice(mainDevice.logicalDevice, nullptr);
+	if (validationEnabled)
+	{
+		DestroyDebugReportCallbackEXT(instance, callback, nullptr);
+	}
 	vkDestroyInstance(instance, nullptr);
 }
 
@@ -50,6 +55,11 @@ void VulkanRenderer::CreateInstance()
 	printf("----------------------------------\n");
 	printf("My Vulkan Render...\nAuthor: Eugene Karpenko\n");
 	printf("----------------------------------\n");
+
+	if (validationEnabled && !CheckValidationLayerSupport())
+	{
+		std::runtime_error("Required Validation Layers not supported!");
+	}
 
 	printf("STAGE: Create Vulkan Instance \n\n");
 
@@ -87,6 +97,12 @@ void VulkanRenderer::CreateInstance()
 		printf("\t%s\n", glfwExtensions[i]);
 	}
 
+	// If validation enabled, add extension to report validation debug info
+	if (validationEnabled)
+	{
+		instanceExtensions.push_back(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
+	}
+
 	// Check instance Extensions suported...
 	if (!CheckInstanceExtensionsSupport(&instanceExtensions))
 	{
@@ -96,9 +112,17 @@ void VulkanRenderer::CreateInstance()
 	createInfo.enabledExtensionCount = static_cast<uint32_t>(instanceExtensions.size());
 	createInfo.ppEnabledExtensionNames = instanceExtensions.data();
 
-	// TODO: Set up validation Layers that Vulkan Instance will use
-	createInfo.enabledLayerCount = 0;
-	createInfo.ppEnabledLayerNames = nullptr;
+	// Set up validation Layers that Vulkan Instance will use
+	if (validationEnabled)
+	{
+		createInfo.enabledLayerCount = static_cast<uint32_t>(validationLayers.size());
+		createInfo.ppEnabledLayerNames = validationLayers.data();
+	}
+	else
+	{
+		createInfo.enabledLayerCount = 0;
+		createInfo.ppEnabledLayerNames = nullptr;
+	}
 
 	// Create Instance
 	VkResult result = vkCreateInstance(&createInfo, nullptr, &instance);
@@ -108,6 +132,26 @@ void VulkanRenderer::CreateInstance()
 	}
 	printf("Vulkan Instance create successful\n");
 	printf("----------------------------------\n");
+}
+
+void VulkanRenderer::CreateDebugCallback()
+{
+	if (!validationEnabled)
+	{
+		return;
+	}
+
+	VkDebugReportCallbackCreateInfoEXT callbackCreateInfo = {};
+	callbackCreateInfo.sType = VK_STRUCTURE_TYPE_DEBUG_REPORT_CALLBACK_CREATE_INFO_EXT;
+	callbackCreateInfo.flags = VK_DEBUG_REPORT_ERROR_BIT_EXT | VK_DEBUG_REPORT_WARNING_BIT_EXT;	// Which validation reports should initiate callback
+	callbackCreateInfo.pfnCallback = debugCallback;												// Pointer to callback function itself
+
+	// Create debug callback with custom create function
+	VkResult result = CreateDebugReportCallbackEXT(instance, &callbackCreateInfo, nullptr, &callback);
+	if (result != VK_SUCCESS)
+	{
+		throw std::runtime_error("Failed to create Debug Callback!");
+	}
 }
 
 void VulkanRenderer::CreateLogicalDevice()
@@ -818,9 +862,10 @@ void VulkanRenderer::CreateGraphicsPipeline()
 	{
 		throw std::runtime_error("Failed to create a Graphics Pipeline!");
 	}
-	printf("Create Graphics Pipeline\n");
 
+	printf("Graphics Pipeline created successful\n");
 
+	printf("Destroy shader modules:\n");
 	// Destroy shader modules, no longer needed after Pipeline created
 	printf("Destroy Vertex shader module\n");
 	vkDestroyShaderModule(mainDevice.logicalDevice, fragmentShaderModule, nullptr);
@@ -929,6 +974,43 @@ bool VulkanRenderer::CheckDeviceExtensionsSupport(VkPhysicalDevice device)
 			}
 		}
 		if (!hasExtension)
+		{
+			return false;
+		}
+	}
+
+	return true;
+}
+
+bool VulkanRenderer::CheckValidationLayerSupport()
+{
+	// Get number of validation layers to create vector of appropriate size
+	uint32_t validationLayerCount;
+	vkEnumerateInstanceLayerProperties(&validationLayerCount, nullptr);
+
+	// Check if no validation layers found AND we want at least 1 layer
+	if (validationLayerCount == 0 && validationLayers.size() > 0)
+	{
+		return false;
+	}
+
+	std::vector<VkLayerProperties> availableLayers(validationLayerCount);
+	vkEnumerateInstanceLayerProperties(&validationLayerCount, availableLayers.data());
+
+	// Check if given Validation Layer is in list of given Validation Layers
+	for (const auto& validationLayer : validationLayers)
+	{
+		bool hasLayer = false;
+		for (const auto& availableLayer : availableLayers)
+		{
+			if (strcmp(validationLayer, availableLayer.layerName) == 0)
+			{
+				hasLayer = true;
+				break;
+			}
+		}
+
+		if (!hasLayer)
 		{
 			return false;
 		}
@@ -1120,7 +1202,7 @@ VkImageView VulkanRenderer::CreateImageView(VkImage image, VkFormat format, VkIm
 	viewCreateInfo.subresourceRange.baseMipLevel = 0;					// Start mipmap level to view from
 	viewCreateInfo.subresourceRange.levelCount = 1;						// Number of mip map levels to view
 	viewCreateInfo.subresourceRange.baseArrayLayer = 0;					// Start array level to view from
-	viewCreateInfo.subresourceRange.layerCount = 0;						// Number of array levels to view
+	viewCreateInfo.subresourceRange.layerCount = 1;						// Number of array levels to view TODO ?
 
 	// Create Image View
 	VkImageView imageView;

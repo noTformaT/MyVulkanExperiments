@@ -9,6 +9,7 @@
 #include <set>
 #include <array>
 
+#include "VulkanValidation.h"
 #include "Utilities.h"
 
 class VulkanRenderer
@@ -27,6 +28,7 @@ private:
 	// Vulkan components
 	// - Main
 	VkInstance instance = nullptr;
+	VkDebugReportCallbackEXT callback;
 
 	struct
 	{
@@ -52,6 +54,7 @@ private:
 	// Vulkan functions
 	// - Create functions
 	void CreateInstance();
+	void CreateDebugCallback();
 	void CreateLogicalDevice();
 	void CreateSurface();
 	void CreateSwapChain();
@@ -65,6 +68,7 @@ private:
 	// -- Checker Functions
 	bool CheckInstanceExtensionsSupport(std::vector<const char*>* checkExtensions);
 	bool CheckDeviceExtensionsSupport(VkPhysicalDevice device);
+	bool CheckValidationLayerSupport();
 	bool CheckDeviceSuitable(VkPhysicalDevice device);
 
 	// -- Getter Functions

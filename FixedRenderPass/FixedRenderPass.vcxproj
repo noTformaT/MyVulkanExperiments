@@ -157,6 +157,7 @@
   <ItemGroup>
     <ClInclude Include="Source\Utilities.h" />
     <ClInclude Include="Source\VulkanRenderer.h" />
+    <ClInclude Include="Source\VulkanValidation.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

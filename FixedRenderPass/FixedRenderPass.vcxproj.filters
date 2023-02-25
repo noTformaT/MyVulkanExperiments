@@ -32,5 +32,8 @@
     <ClInclude Include="Source\Utilities.h">
       <Filter>Source\Public</Filter>
     </ClInclude>
+    <ClInclude Include="Source\VulkanValidation.h">
+      <Filter>Source\Public</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
