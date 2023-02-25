@@ -28,7 +28,9 @@ int VulkanRenderer::Init(GLFWwindow* newWindow)
 
 void VulkanRenderer::Cleanup()
 {
+	vkDestroyPipeline(mainDevice.logicalDevice, graphicsPipeline, nullptr);
 	vkDestroyPipelineLayout(mainDevice.logicalDevice, pipelineLayout, nullptr);
+	vkDestroyRenderPass(mainDevice.logicalDevice, renderPass, nullptr);
 	for (SwapChainImage& image : swapChainImages)
 	{
 		vkDestroyImageView(mainDevice.logicalDevice, image.imageView, nullptr);
@@ -558,6 +560,7 @@ void VulkanRenderer::CreateSwapChain()
 
 void VulkanRenderer::CreateRenderPass()
 {
+	printf("STAGE: Create Render Pass\n\n");
 	// Colour attachments of render pass
 	VkAttachmentDescription colourAttachment = {};
 	colourAttachment.format = swapChainImageFormat;						// Format to use for attachment
@@ -586,21 +589,46 @@ void VulkanRenderer::CreateRenderPass()
 	// Need to determine when layout transitions occur using subpass dependenciess
 	std::array<VkSubpassDependency, 2> subpassDependencies;
 
-	// Conversion from VK_IMAGE_LAYOUT_UNDEFINED to VK_LAYOUT_PRESENT_SRC_KHR
-	subpassDependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;
-	subpassDependencies[0].srcStageMask = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
-	subpassDependencies[0].srcAccessMask = VK_ACCESS_MEMORY_READ_BIT;
-	
+	// Conversion from VK_IMAGE_LAYOUT_UNDEFINED to VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL
+	// Transition must happen after...
+	subpassDependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;						// Subpass index (VK_SUBPASS_EXTERNAL = Special value meaning outside of renderpass)
+	subpassDependencies[0].srcStageMask = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;		// Pipeline stage 
+	subpassDependencies[0].srcAccessMask = VK_ACCESS_MEMORY_READ_BIT;				// Stage access mask (memory access)
+	// But must happen before...
 	subpassDependencies[0].dstSubpass = 0;
 	subpassDependencies[0].dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 	subpassDependencies[0].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+	subpassDependencies[0].dependencyFlags = 0;
 
+	// Conversion from VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL to VK_LAYOUT_PRESENT_SRC_KHR
+	// Transition must happen after...
+	subpassDependencies[1].srcSubpass = 0;											// Subpass index (VK_SUBPASS_EXTERNAL = Special value meaning outside of renderpass)
+	subpassDependencies[1].srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;		// Pipeline stage 
+	subpassDependencies[1].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+	// But must happen before...
+	subpassDependencies[1].dstSubpass = VK_SUBPASS_EXTERNAL;
+	subpassDependencies[1].dstStageMask = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+	subpassDependencies[1].dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
+	subpassDependencies[1].dependencyFlags = 0;
+
+	// Create info for Render Pass
 	VkRenderPassCreateInfo renderPassCreateInfo = {};
 	renderPassCreateInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
 	renderPassCreateInfo.attachmentCount = 1;
 	renderPassCreateInfo.pAttachments = &colourAttachment;
 	renderPassCreateInfo.subpassCount = 1;
 	renderPassCreateInfo.pSubpasses = &subpass;
+	renderPassCreateInfo.dependencyCount = static_cast<uint32_t>(subpassDependencies.size());
+	renderPassCreateInfo.pDependencies = subpassDependencies.data();
+
+	VkResult result = vkCreateRenderPass(mainDevice.logicalDevice, &renderPassCreateInfo, nullptr, &renderPass);
+	if (result != VK_SUCCESS)
+	{
+		throw std::runtime_error("Failed to create a Render Pass!");
+	}
+
+	printf("Render Pass successful created\n");
+	printf("----------------------------------\n");
 }
 
 void VulkanRenderer::CreateGraphicsPipeline()
@@ -762,6 +790,36 @@ void VulkanRenderer::CreateGraphicsPipeline()
 	// -- DEPTH STENCIL TESTING --
 	//	TODO: Set up depth stencil testing
 	printf("Create Depth Stencil Testing\n");
+
+	// -- GRAPHICS PIPELINE CREATION --
+	VkGraphicsPipelineCreateInfo pipelineCreateInfo = {};
+	pipelineCreateInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+	pipelineCreateInfo.stageCount = 2;											// Number of shaders
+	pipelineCreateInfo.pStages = shaderStages;									// List of shaders
+	pipelineCreateInfo.pVertexInputState = &vertexInputCreateInfo;				// Vertex Input State
+	pipelineCreateInfo.pInputAssemblyState = &inputAssembly;					// Assembly State
+	pipelineCreateInfo.pViewportState = &viewPortStateCreateInfo;				// ViewPort State
+	pipelineCreateInfo.pDynamicState = nullptr;									// Dynamic State
+	pipelineCreateInfo.pRasterizationState = &rasterizationStateCreateInfo;		// Fragment/Resterization State
+	pipelineCreateInfo.pMultisampleState = &multisampleStateCreateInfo;			// Multisamples State
+	pipelineCreateInfo.pColorBlendState = &colorBlendStateCreateInfo;			// Color Blend State
+	pipelineCreateInfo.pDepthStencilState = nullptr;							// Depth Stencil State
+	pipelineCreateInfo.layout = pipelineLayout;									// Pipeline Layout should use
+	pipelineCreateInfo.renderPass = renderPass;									// Render Pass description the pipeline compatible with
+	pipelineCreateInfo.subpass = 0;												// Subpass of Render Pass to use with pipeline
+
+	// Pipeline Derivatives : Can create multiple pipelines thet derive from one another for optimization
+	pipelineCreateInfo.basePipelineHandle = VK_NULL_HANDLE;						// Existing pipeline for derive from ...
+	pipelineCreateInfo.basePipelineIndex = -1;									// or index of pipeline being created to derive from (in case creating multiple at once)
+
+	// Create Graphics Pipeline
+	result = vkCreateGraphicsPipelines(mainDevice.logicalDevice, VK_NULL_HANDLE, 1, &pipelineCreateInfo, nullptr, &graphicsPipeline);
+	if (result != VK_SUCCESS)
+	{
+		throw std::runtime_error("Failed to create a Graphics Pipeline!");
+	}
+	printf("Create Graphics Pipeline\n");
+
 
 	// Destroy shader modules, no longer needed after Pipeline created
 	printf("Destroy Vertex shader module\n");

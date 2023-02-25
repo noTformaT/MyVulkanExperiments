@@ -41,7 +41,9 @@ private:
 	std::vector<SwapChainImage> swapChainImages;
 
 	// - Pipeline
+	VkPipeline graphicsPipeline;
 	VkPipelineLayout pipelineLayout;
+	VkRenderPass renderPass;
 
 	// - Utility
 	VkFormat swapChainImageFormat;
