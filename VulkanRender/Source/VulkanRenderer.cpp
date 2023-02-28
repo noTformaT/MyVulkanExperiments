@@ -22,17 +22,76 @@ int VulkanRenderer::Init(GLFWwindow* newWindow)
 		CreateCommandPool();
 		CreateCommandBuffers();
 		RecordCommands();
+		CreateSynchronisation();
 	}
 	catch (const std::runtime_error& e)
 	{
 		printf("ERROR: %s\n", e.what());
+		return EXIT_FAILURE;
 	}
 
 	return 0;
 }
 
+void VulkanRenderer::Draw()
+{
+	// 1. Get next available image to draw to and set something to signal when we're finished with the image (a semaphore)
+	// 2. Submit CommandBuffer to queue for execution, making sure it wait for the image to be signalled as available before drawing
+	// and signals when it has finished rendering
+	// 3. Present image to screen when it has signalled finished rendering
+
+	// -- GET NEXT IMAGE --
+	// Get index of next image to be draw to, and signal semaphore when ready to be drawn to
+	uint32_t imageIndex;
+	VkResult result = vkAcquireNextImageKHR(mainDevice.logicalDevice, swapChain, std::numeric_limits<uint64_t>::max(), imageAvaible, VK_NULL_HANDLE, &imageIndex);
+	if (result != VK_SUCCESS)
+	{
+		throw std::runtime_error("Fuck!");
+	}
+	//printf("imageIndex = %u \n", imageIndex);
+
+	// -- SUBMIT COMMAND BUFFER TO RENDER --
+	// Queue submission information
+	VkSubmitInfo submitInfo = {};
+	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+	submitInfo.waitSemaphoreCount = 1;							// Number of semaphores to wait on
+	submitInfo.pWaitSemaphores = &imageAvaible;					// List of semaphores to wait on
+	VkPipelineStageFlags waitStages[] = {
+		VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
+	};
+	submitInfo.pWaitDstStageMask = waitStages;					// Stages to check semaphores at
+	submitInfo.commandBufferCount = 1;							// Number of command buffer submited
+	submitInfo.pCommandBuffers = &commandBuffers[imageIndex];	// Command Buffer to sumbit
+	submitInfo.signalSemaphoreCount = 1;						// Number of semaphores to signal
+	submitInfo.pSignalSemaphores = &renderFinished;				// Semaphores to signal when command buffer finishes
+	
+	// Submit command buffer to queue
+	result = vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
+	if (result != VK_SUCCESS)
+	{
+		throw std::runtime_error("Failed to submit Command Buffer to Queue!");
+	}
+
+	// -- PRESENT RENDERED IMAGE TO SCREEN --
+	VkPresentInfoKHR presentInfo = {};
+	presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+	presentInfo.waitSemaphoreCount = 1;							// Number of semaphores to wait on
+	presentInfo.pWaitSemaphores = &renderFinished;				// List of semaphores to wait on
+	presentInfo.swapchainCount = 1;								// Number of swapchains to present to
+	presentInfo.pSwapchains = &swapChain;						// Swapchains to present images to
+	presentInfo.pImageIndices = &imageIndex;					// Index of images in swapchains to present
+
+	result = vkQueuePresentKHR(presentationQueue, &presentInfo);
+	if (result != VK_SUCCESS)
+	{
+		throw std::runtime_error("Failed to present Image!");
+	}
+}
+
 void VulkanRenderer::Cleanup()
 {
+	vkDestroySemaphore(mainDevice.logicalDevice, imageAvaible, nullptr);
+	vkDestroySemaphore(mainDevice.logicalDevice, renderFinished, nullptr);
 	vkDestroyCommandPool(mainDevice.logicalDevice, graphicsCommandPool, nullptr);
 	for (VkFramebuffer& frameBuffer : swapChainFrameBuffers)
 	{
@@ -632,11 +691,12 @@ void VulkanRenderer::CreateRenderPass()
 	// Attachment reference uses an attachment index that refers to index in the attachment list passed to renderPassCreateInfo
 	VkAttachmentReference colourAttachmentReference = {};
 	colourAttachmentReference.attachment = 0;
-	colourAttachmentReference.layout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL;
+	colourAttachmentReference.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 		
 	// Information about a particular subpass the Render Pass is using
 	VkSubpassDescription subpass = {};
 	subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;		// Pipeline type subpass is to be bound to
+	subpass.colorAttachmentCount = 1;
 	subpass.pColorAttachments = &colourAttachmentReference;
 
 	// Need to determine when layout transitions occur using subpass dependenciess
@@ -762,16 +822,16 @@ void VulkanRenderer::CreateGraphicsPipeline()
 	viewPortStateCreateInfo.pScissors = &scissor;
 
 	// -- DYNAMIC STATES --
-	std::vector<VkDynamicState> dynamicStateEnables;
-	dynamicStateEnables.push_back(VK_DYNAMIC_STATE_VIEWPORT);		// Dynamic viewport : Can resize in command buffer with vkCmdSetViewport(commandbuffer, 0, 1, &viewport);
-	dynamicStateEnables.push_back(VK_DYNAMIC_STATE_SCISSOR);		// Dynamic scissor  : Can resize in command buffer with vkCmdSetScissor(commandbuffer, 0, 1, &scissor);
+	//std::vector<VkDynamicState> dynamicStateEnables;
+	//dynamicStateEnables.push_back(VK_DYNAMIC_STATE_VIEWPORT);		// Dynamic viewport : Can resize in command buffer with vkCmdSetViewport(commandbuffer, 0, 1, &viewport);
+	//dynamicStateEnables.push_back(VK_DYNAMIC_STATE_SCISSOR);		// Dynamic scissor  : Can resize in command buffer with vkCmdSetScissor(commandbuffer, 0, 1, &scissor);
 
 	// Dynamic State creation info
 	printf("Create Dynamic States\n");
-	VkPipelineDynamicStateCreateInfo dynamicStateCreateInfo = {};
-	dynamicStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-	dynamicStateCreateInfo.dynamicStateCount = static_cast<uint32_t>(dynamicStateEnables.size());
-	dynamicStateCreateInfo.pDynamicStates = dynamicStateEnables.data();
+	//VkPipelineDynamicStateCreateInfo dynamicStateCreateInfo = {};
+	//dynamicStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+	//dynamicStateCreateInfo.dynamicStateCount = static_cast<uint32_t>(dynamicStateEnables.size());
+	//dynamicStateCreateInfo.pDynamicStates = dynamicStateEnables.data();
 
 	// -- RASTERIZER --
 	printf("Create Rasterization State\n");
@@ -963,6 +1023,19 @@ void VulkanRenderer::CreateCommandBuffers()
 	printf("----------------------------------\n");
 }
 
+void VulkanRenderer::CreateSynchronisation()
+{
+	// Semaphore creation information
+	VkSemaphoreCreateInfo semaphoreCreateInfo = {};
+	semaphoreCreateInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+
+	if (vkCreateSemaphore(mainDevice.logicalDevice, &semaphoreCreateInfo, nullptr, &imageAvaible) != VK_SUCCESS ||
+		vkCreateSemaphore(mainDevice.logicalDevice, &semaphoreCreateInfo, nullptr, &renderFinished) != VK_SUCCESS)
+	{
+		throw std::runtime_error("Failed to create a Semaphores!");
+	}
+}
+
 void VulkanRenderer::RecordCommands()
 {
 	printf("STAGE: Record Commands \n\n");
@@ -978,7 +1051,7 @@ void VulkanRenderer::RecordCommands()
 	renderPassBeginInfo.renderArea.offset = { 0, 0 };							// Start point of render pass in pixels
 	renderPassBeginInfo.renderArea.extent = swapChainExtent;					// Size of region to run render pass on (starting at offset)
 	VkClearValue clearValues[] = {
-		{0.6f, 0.65f, .4f, 1.0f},
+		{0.0f, 0.0f, .0f, 1.0f},
 	};
 	renderPassBeginInfo.pClearValues = clearValues;								// List of clear values (TODO: Depth Attachment Clear)
 	renderPassBeginInfo.clearValueCount = 1;									// Count of clear values
