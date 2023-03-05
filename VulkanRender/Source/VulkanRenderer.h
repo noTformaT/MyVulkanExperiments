@@ -9,6 +9,7 @@
 #include <set>
 #include <array>
 
+#include "Mesh.h"
 #include "VulkanValidation.h"
 #include "Utilities.h"
 
@@ -24,6 +25,10 @@ public:
 	~VulkanRenderer();
 
 private:
+	// Scenes Objects
+	Mesh firstMesh;
+
+
 	GLFWwindow* window = nullptr;
 
 	int currentFrame = 0;

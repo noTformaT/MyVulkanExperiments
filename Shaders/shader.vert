@@ -1,23 +1,13 @@
 #version 450
 
-layout (location = 0) out vec3 fragColor; // out color for vertex (location is required)
+layout (location = 0) in vec3 vertexPosition;
+layout (location = 1) in vec3 vertexColor;
 
-// Triangle vertex position
-vec3 positions[3] = vec3[] (
-    vec3(0.0f, -0.4f, 0.0f),
-    vec3(0.4f, 0.4f, 0.0f),
-    vec3(-0.4f, 0.4f, 0.0f)
-);
-
-// Triangle vertex color
-vec3 colors[3] = vec3[] (
-    vec3(1.0f, 0.0f, 0.0f),
-    vec3(0.0f, 1.0f, 0.0f),
-    vec3(0.0f, 0.0f, 1.0f)
-);
+layout (location = 0) out vec3 fragColor;
 
 void main()
 {
-    gl_Position = vec4(positions[gl_VertexIndex], 1.0f);
-    fragColor = colors[gl_VertexIndex];
+    gl_Position = vec4(vertexPosition, 1.0f);
+
+    fragColor = vertexColor;
 }

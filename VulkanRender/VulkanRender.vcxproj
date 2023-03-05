@@ -152,9 +152,11 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Source\main.cpp" />
+    <ClCompile Include="Source\Mesh.cpp" />
     <ClCompile Include="Source\VulkanRenderer.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Source\Mesh.h" />
     <ClInclude Include="Source\Utilities.h" />
     <ClInclude Include="Source\VulkanRenderer.h" />
     <ClInclude Include="Source\VulkanValidation.h" />
